@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 150" width="420" height="150">
+<defs><style>
+.sig{fill:none;stroke:#1a1a1a;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.dash{fill:none;stroke:#aaa;stroke-width:1.2;stroke-dasharray:6,4;}
+.label{font-family:Arial,Helvetica,sans-serif;font-size:14px;fill:#333;}
+.dlabel{font-family:Arial,Helvetica,sans-serif;font-size:10px;fill:#1a1a1a;text-anchor:middle;dominant-baseline:central;}
+.hex{fill:#dce8fc;stroke:#1a1a1a;stroke-width:1.5;}
+.arrow-line{fill:none;stroke:#666;stroke-width:1.2;}
+.arrow-label{font-family:Arial,Helvetica,sans-serif;font-size:13px;fill:#666;text-anchor:middle;}
+</style></defs>
+<rect width="420" height="150" fill="#ffffff"/>
+<text class="label" x="132" y="95" text-anchor="end">SIG</text>
+<path class="sig" d="M 140,104 L 160,104 L 180,104 L 180,104 L 183,68 L 200,68 L 220,68 L 220,68 L 223,104 L 240,104 L 260,104 L 260,104"/>
+<path class="sig" d="M 260,104 L 263,86 L 266,86"/>
+<polygon class="hex" points="354,86 347,72 273,72 266,86 273,100 347,100"/>
+<path class="sig" d="M 354,86 L 360,86 L 360,86 L 363,68 L 380,68 L 380,68"/>
+<line class="dash" x1="260" y1="60" x2="260" y2="120"/>
+<line class="dash" x1="360" y1="60" x2="360" y2="120"/>
+<g class="arrow-line"><line x1="260" y1="46" x2="360" y2="46"/><line x1="260" y1="46" x2="264" y2="42"/><line x1="260" y1="46" x2="264" y2="50"/><line x1="360" y1="46" x2="356" y2="42"/><line x1="360" y1="46" x2="356" y2="50"/></g><text class="arrow-label" x="310" y="40">t_PW</text>
+</svg>

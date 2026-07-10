@@ -1,0 +1,6 @@
+node_modules/
+logo_b64.txt
+screenshot.png
+*.pyc
+__pycache__/
+.DS_Store
