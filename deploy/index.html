@@ -568,10 +568,32 @@ function getState() {
   return { channels, annotations };
 }
 
+function saveState() {
+  const { channels, annotations } = getState();
+  localStorage.setItem('wavetool_state', JSON.stringify({ channels, annotations }));
+}
+
+function restoreState() {
+  try {
+    const raw = localStorage.getItem('wavetool_state');
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data.channels || !Array.isArray(data.channels)) return false;
+    data.channels.forEach(ch => addChannelCardToDOM(generateId(), ch.name, ch.code));
+    if (data.annotations && Array.isArray(data.annotations)) {
+      data.annotations.forEach(ann =>
+        addAnnotationCardToDOM(generateId(), ann.startStep, ann.endStep, ann.label, ann.channelId, ann.extendAll));
+    }
+    refreshAnnotationChannels();
+    return true;
+  } catch (e) { return false; }
+}
+
 function render() {
   const { channels, annotations } = getState();
   const svg = buildSVGString(channels, annotations, 20);
   document.getElementById('svgOutput').innerHTML = svg;
+  saveState();
 }
 
 const scheduleRender = debounce(render, 50);
@@ -787,9 +809,10 @@ function setupEvents() {
    ================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
   setupEvents();
-  // Default: one empty single-wire channel
-  addChannelCardToDOM(generateId(), 'SIG', 'LLHHLL');
-  addAnnotationCardToDOM(generateId(), 2, 4, 't_PW', '', false);
+  if (!restoreState()) {
+    addChannelCardToDOM(generateId(), 'SIG', 'LLHHLL');
+    addAnnotationCardToDOM(generateId(), 2, 4, 't_PW', '', false);
+  }
   renderImmediate();
 });
 
