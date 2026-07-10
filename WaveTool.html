@@ -32,6 +32,12 @@
   <div class="p-4 pb-2 border-b border-gray-200 bg-white">
     <h1 class="text-lg font-bold text-gray-800 tracking-tight">波形绘制工具</h1>
     <p class="text-xs text-gray-500 mt-0.5">芯片时序图快速绘制</p>
+    <div class="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100">
+      <span class="text-xs text-gray-500 shrink-0">标签字号</span>
+      <input type="range" min="8" max="20" value="14" id="globalFontSize" class="w-16 h-1 accent-blue-500">
+      <span id="fontSizeValue" class="text-xs text-gray-600 w-8">14</span>
+      <button id="helpBtn" class="text-xs text-blue-500 hover:text-blue-700 ml-auto">使用方法</button>
+    </div>
   </div>
 
   <!-- Signal Channels -->
@@ -84,7 +90,7 @@
         <tr><td class="py-1 pr-2 font-mono">H / h</td><td class="py-1">高电平</td></tr>
         <tr><td class="py-1 pr-2 font-mono">C / c</td><td class="py-1">时钟脉冲（居中方波）</td></tr>
         <tr><td class="py-1 pr-2 font-mono">X / x</td><td class="py-1">总线数据块。x = 1步长，x- = 2步长合并</td></tr>
-        <tr><td class="py-1 pr-2 font-mono">x{...}</td><td class="py-1">数据块带标签，如 x{D17}。标签不占步长</td></tr>
+        <tr><td class="py-1 pr-2 font-mono">x{...}</td><td class="py-1">数据块带标签，如 x{D17}。x{D17:18} 单独指定字号</td></tr>
         <tr><td class="py-1 pr-2 font-mono">Z / z</td><td class="py-1">高阻态（中间水平线）</td></tr>
         <tr><td class="py-1 pr-2 font-mono">|</td><td class="py-1">时序断轴（≈ 省略号）</td></tr>
       </tbody>
@@ -250,11 +256,21 @@ function buildSingleWirePath(code, waveX0, row, stepSize) {
     if (cl === 'x') {
       let span = 1;
       while (i + span < code.length && code[i + span] === '-') span++;
-      let label = null, labelLen = 0;
+      let label = null, labelSize = null, labelLen = 0;
       let bracePos = i + span;
       if (bracePos < code.length && code[bracePos] === '{') {
         let close = code.indexOf('}', bracePos + 1);
-        if (close !== -1) { label = code.substring(bracePos + 1, close); labelLen = close - bracePos + 1; }
+        if (close !== -1) {
+          let raw = code.substring(bracePos + 1, close);
+          labelLen = close - bracePos + 1;
+          let lastColon = raw.lastIndexOf(':');
+          if (lastColon !== -1 && /^\d+$/.test(raw.substring(lastColon + 1))) {
+            label = raw.substring(0, lastColon);
+            labelSize = parseInt(raw.substring(lastColon + 1));
+          } else {
+            label = raw;
+          }
+        }
       }
       // End current path, draw sloped connector to polygon left side
       flushPath(xs);
@@ -270,7 +286,9 @@ function buildSingleWirePath(code, waveX0, row, stepSize) {
       // Diagonals narrow inward (standard hexagon): top/bottom edges are between side vertices
       const pts = `${rightX},${CY} ${rightX-TX},${CY-HH} ${leftX+TX},${CY-HH} ${leftX},${CY} ${leftX+TX},${CY+HH} ${rightX-TX},${CY+HH}`;
       const topW = (rightX - TX) - (leftX + TX);
-      const fs = label ? Math.max(6, Math.min(10, Math.floor(topW / (label.length * 1.2)))) : 10;
+      const gFontSize = parseInt(document.getElementById('globalFontSize')?.value) || 14;
+      const requested = labelSize || gFontSize;
+      const fs = label ? Math.max(6, Math.min(requested, Math.floor(topW / (label.length * 1.2)))) : 10;
       elems.push({ type: 'polygon', points: pts, cx: (leftX + rightX) / 2, cy: CY, label, fs });
       // Resume path from functional step end (skip the polygon-overhang artifact)
       cmdSeg = [`M ${endX},${CY}`];
@@ -568,10 +586,37 @@ function getState() {
   return { channels, annotations };
 }
 
+function saveState() {
+  const { channels, annotations } = getState();
+  const gFontSize = document.getElementById('globalFontSize')?.value || 14;
+  localStorage.setItem('wavetool_state', JSON.stringify({ channels, annotations, gFontSize }));
+}
+
+function restoreState() {
+  try {
+    const raw = localStorage.getItem('wavetool_state');
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data.channels || !Array.isArray(data.channels)) return false;
+    if (data.gFontSize) {
+      const fs = document.getElementById('globalFontSize');
+      if (fs) { fs.value = data.gFontSize; document.getElementById('fontSizeValue').textContent = data.gFontSize; }
+    }
+    data.channels.forEach(ch => addChannelCardToDOM(generateId(), ch.name, ch.code));
+    if (data.annotations && Array.isArray(data.annotations)) {
+      data.annotations.forEach(ann =>
+        addAnnotationCardToDOM(generateId(), ann.startStep, ann.endStep, ann.label, ann.channelId, ann.extendAll));
+    }
+    refreshAnnotationChannels();
+    return true;
+  } catch (e) { return false; }
+}
+
 function render() {
   const { channels, annotations } = getState();
   const svg = buildSVGString(channels, annotations, 20);
   document.getElementById('svgOutput').innerHTML = svg;
+  saveState();
 }
 
 const scheduleRender = debounce(render, 50);
@@ -596,7 +641,6 @@ function addChannelCardToDOM(id, name, code) {
     `</div>` +
     `<div class="mb-1"><span class="text-xs text-gray-500">波形代码</span></div>` +
     `<textarea class="channel-code w-full border border-gray-300 rounded px-2 py-1.5 text-sm resize-none" rows="2" placeholder="L L H H C | X X Z">${escapeHtml(code||'')}</textarea>` +
-    `<button class="help-btn text-xs text-blue-500 hover:text-blue-700 mt-1">使用方法</button>`;
 
   container.appendChild(div);
 }
@@ -756,11 +800,16 @@ function setupEvents() {
     }
   });
 
+  document.getElementById('helpBtn').addEventListener('click', () => {
+    document.getElementById('helpModal').classList.remove('hidden');
+  });
+
+  document.getElementById('globalFontSize').addEventListener('input', (e) => {
+    document.getElementById('fontSizeValue').textContent = e.target.value;
+    scheduleRender();
+  });
+
   document.getElementById('controlPanel').addEventListener('click', (e) => {
-    if (e.target.matches('.help-btn') || e.target.closest('.help-btn')) {
-      document.getElementById('helpModal').classList.remove('hidden');
-      return;
-    }
     if (e.target.matches('.remove-btn') || e.target.closest('.remove-btn')) {
       const card = e.target.closest('[data-channel-id], [data-annotation-id]');
       if (card) {
@@ -787,9 +836,10 @@ function setupEvents() {
    ================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
   setupEvents();
-  // Default: one empty single-wire channel
-  addChannelCardToDOM(generateId(), 'SIG', 'LLHHLL');
-  addAnnotationCardToDOM(generateId(), 2, 4, 't_PW', '', false);
+  if (!restoreState()) {
+    addChannelCardToDOM(generateId(), 'SIG', 'LLHHLL');
+    addAnnotationCardToDOM(generateId(), 2, 4, 't_PW', '', false);
+  }
   renderImmediate();
 });
 
