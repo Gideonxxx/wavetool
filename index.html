@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>波形绘制工具</title>
+  <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAD7klEQVR4nKVWS4wbRRCt6h5717PxLnhDlqBELFgkER/xE3sLFyQQJ65cEJzhyi1C4g4CjpwXbgghkcsiEEIitwAiEh+hIEQ+ewnE+3G89rin66HuGY/n53VWlEb2TE13fV5VvxoGQAQqCPvfkrL09m4lIAJgj7KZKxpU9cwqc3DUoJC3AojT8MyEUz//W7guDueT4cQSi1fO9MfsTPiCJduF2d3Dhci5siHvjFknEJXSKyzKyRQIVo2pGjE5Z1yLkvII5t/4x4LGCZCFL8za3rlifn9D/r5Atu8d+0qkUBX2JhlkMqs1KZe+hunJlVf04BopEjvQ3Y8AQ2nblFMvOqgEXhR2iSiNUU/9dov5JO30sHsV3dySSuZH7CImEsNLD0v4Jn0J+WadTr/tsJ/ahe+XXCsDAoprLGHG4QBYBSAyP17WD3b18Y7HJ3nlu8D9pH3FrIoQJUbTFfXmmRjWDt9/j77ass881XznXb3c9sct2ZL0Um47IIJxekksYgTG39Rd8QjA+PtLg9V7+mfW+8th9OkmABmPatcDUuqiLIQaenGStOLtfxqtxTgMVTvk/V3KCyf1mG6sOpgvvKj0ShR0DAfGrqjDySznII970q8lNCdPvGLxxJDvjXAwoo5xKiU+9qw14NnUlTpzkFX/LmQ55sciOjaiKKJVc0iqJYiSFvZRzDof7CMIBadALcMx8Yr4ZFUxOM5O/pwaWJBmEjjLmQE0SVYJDVIgtThVTyiPZ9UgQW2ymphYBS5k0Z5nYrEK1rW8irlFWNAcEynloZUJF032I6XFmVThweLNqztPf3Hj1W+396I4UFrplmKl9ra4SU1nnqhx/HD+Cips76otgGb9a2/4+uU9ai79fONg++trH26cvL/17/Wdz37a+Y6OnXkp3n2EGra94TlBVcFJxnL9QXMJMv3ZHxPrhaWmpejS7eFzF7dPNH/YOP3J6tIDbQ5iPXjrvpeD8FFCVMInL6oyrVwUyhEzzq+Fp1o22j9QZJuthg7jW+bZvnncWH19FO8G53j9g7S/y+HDj1hvqtatqyyks9i4+PzauZYZD+PxyNhhoINfjPxxczA8sXD2te7HwUIXcIUu7s6Kkg59AZlKFzkRkFbqjrGbf+1vbe/3xjfPLn/+UFs92Tn/wtqLYRAKxsnHwATbhK6nSDAFJQf5HBIf0CpzHPmaJWUTIcOF2EtDP5kHOhs41S+JlNlBZMmyK4z7QgAs/H3u5FUAntSj5KCWFXmCpvc3Z2jneB4q4bu5dI3Jv6RENEey2NMuyr5Na0MrMkdBUxcEkbUiFgl9uOGt3ExmJk3uqtqdo8s5SH24OimZtBYz83+aoQBdljzllAAAAABJRU5ErkJggg==">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+/* ── SVG rendering classes ── */
+.sig{fill:none;stroke:#1a1a1a;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.dash{fill:none;stroke:#aaa;stroke-width:1.2;stroke-dasharray:6,4;}
+.label{font-family:Arial,Helvetica,sans-serif;font-size:14px;fill:#333;}
+.dlabel{font-family:Arial,Helvetica,sans-serif;font-size:10px;fill:#1a1a1a;text-anchor:middle;dominant-baseline:central;}
+.hex{fill:#dce8fc;stroke:#1a1a1a;stroke-width:1.5;}
+.bus-bg{fill:none;stroke:#1a1a1a;stroke-width:2;}
+.arrow-line{fill:none;stroke:#666;stroke-width:1.2;}
+.arrow-label{font-family:Arial,Helvetica,sans-serif;font-size:13px;fill:#666;text-anchor:middle;}
+/* ── Panel UI ── */
+.channel-card,.annotation-card{transition:border-color 0.2s;}
+.channel-card:hover,.annotation-card:hover{border-color:#93c5fd;}
+.channel-code{font-family:'Consolas','Courier New',monospace;font-size:14px;letter-spacing:2px;}
+.remove-btn{transition:color 0.15s;cursor:pointer;}
+.remove-btn:hover{color:#ef4444;}
+#svgOutput svg{display:block;}
+</style>
+</head>
+<body class="h-screen flex overflow-hidden bg-gray-100">
+
+<!-- ═══ LEFT PANEL ═══ -->
+<div id="controlPanel" class="w-96 min-w-[384px] h-full overflow-y-auto border-r border-gray-300 bg-gray-50 flex flex-col">
+  <div class="p-4 pb-2 border-b border-gray-200 bg-white">
+    <h1 class="text-lg font-bold text-gray-800 tracking-tight">波形绘制工具</h1>
+    <p class="text-xs text-gray-500 mt-0.5">芯片时序图快速绘制</p>
+  </div>
+
+  <!-- Signal Channels -->
+  <div class="p-4 pb-2">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm font-semibold text-gray-600 uppercase tracking-wide">信号通道</span>
+      <button id="addChannelBtn" class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded font-medium transition-colors">+ 添加通道</button>
+    </div>
+    <div id="channelsContainer" class="space-y-2"></div>
+  </div>
+
+  <!-- Timing Measurements -->
+  <div class="p-4 pb-2 border-t border-gray-200">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-sm font-semibold text-gray-600 uppercase tracking-wide">时序测量</span>
+      <button id="addAnnotationBtn" class="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded font-medium transition-colors">+ 添加测量</button>
+    </div>
+    <div id="annotationsContainer" class="space-y-2"></div>
+  </div>
+
+  <!-- Spacer -->
+  <div class="flex-1"></div>
+
+  <!-- Action Bar -->
+  <div class="p-4 border-t border-gray-200 bg-white space-y-2">
+    <div class="flex gap-2">
+      <button id="presetAdcBtn" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-2 py-2 rounded border border-indigo-200 font-medium transition-colors">1. 3线ADC采样</button>
+      <button id="presetMramBtn" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-2 py-2 rounded border border-indigo-200 font-medium transition-colors">2. MRAM写时序</button>
+    </div>
+    <button id="exportBtn" class="w-full bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2.5 rounded font-semibold transition-colors">导出 SVG</button>
+  </div>
+</div>
+
+<!-- ═══ RIGHT PANEL ═══ -->
+<div id="svgContainer" class="flex-1 h-full overflow-auto bg-white">
+  <div id="svgOutput" class="p-4"></div>
+</div>
+
+<!-- ═══ HELP MODAL ═══ -->
+<div id="helpModal" class="fixed inset-0 z-50 flex items-center justify-center hidden" style="background:rgba(0,0,0,0.35)">
+  <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-base font-bold text-gray-800">波形代码语法</h2>
+      <button id="closeHelpBtn" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+    </div>
+    <table class="w-full text-sm">
+      <thead><tr class="border-b text-left text-gray-500"><th class="py-1 pr-2">字符</th><th class="py-1">含义</th></tr></thead>
+      <tbody class="text-gray-700">
+        <tr><td class="py-1 pr-2 font-mono">L / l</td><td class="py-1">低电平</td></tr>
+        <tr><td class="py-1 pr-2 font-mono">H / h</td><td class="py-1">高电平</td></tr>
+        <tr><td class="py-1 pr-2 font-mono">C / c</td><td class="py-1">时钟脉冲（居中方波）</td></tr>
+        <tr><td class="py-1 pr-2 font-mono">X / x</td><td class="py-1">总线数据块。x = 1步长，x- = 2步长合并</td></tr>
+        <tr><td class="py-1 pr-2 font-mono">x{...}</td><td class="py-1">数据块带标签，如 x{D17}。标签不占步长</td></tr>
+        <tr><td class="py-1 pr-2 font-mono">Z / z</td><td class="py-1">高阻态（中间水平线）</td></tr>
+        <tr><td class="py-1 pr-2 font-mono">|</td><td class="py-1">时序断轴（≈ 省略号）</td></tr>
+      </tbody>
+    </table>
+    <p class="text-xs text-gray-400 mt-3">斜线过渡、标签字号等由工具自动处理，无需手动调整。</p>
+  </div>
+</div>
+
+<!-- ═══ JAVASCRIPT ═══ -->
+<script>
+(function() {
+'use strict';
+
+/* ==================================================================
+   Layer 0 — Utilities
+   ================================================================== */
+let _idCounter = 0;
+function generateId() { return 'el_' + (++_idCounter); }
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function debounce(fn, delay) {
+  let timer = null;
+  return function(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+/* ==================================================================
+   Layer 1 — SVG Primitives  (ported from make_timing.py)
+   ================================================================== */
+function hexPoints(cx, cy, hw, hh) {
+  return `${cx+hw},${cy} ${cx+hw/2},${cy-hh} ${cx-hw/2},${cy-hh} ${cx-hw},${cy} ${cx-hw/2},${cy+hh} ${cx+hw/2},${cy+hh}`;
+}
+
+// Pinched-waist hexagon: side vertices stay fixed (1-step width),
+// top/bottom edges scale with span (x- / x-- syntax)
+function hexPointsWide(cx, cy, hwSide, hwWide, hh) {
+  return `${cx+hwSide},${cy} ${cx+hwWide},${cy-hh} ${cx-hwWide},${cy-hh} ${cx-hwSide},${cy} ${cx-hwWide},${cy+hh} ${cx+hwWide},${cy+hh}`;
+}
+
+function wavePath(x0, x1, cy, n) {
+  n = n || 2;
+  const w = (x1 - x0) / (2 * n);
+  const parts = [`M ${x0},${cy}`];
+  for (let i = 0; i < n; i++) {
+    const xa = x0 + w * (2 * i);
+    const xm = x0 + w * (2 * i + 1);
+    const xb = x0 + w * (2 * i + 2);
+    parts.push(`Q ${xa + w*0.4},${cy-9} ${xm},${cy}`);
+    parts.push(`Q ${xm + w*0.6},${cy+9} ${xb},${cy}`);
+  }
+  return parts.join(' ');
+}
+
+function arrowSVG(x1, x2, y, label) {
+  const tip = 4;
+  return `<g class="arrow-line">` +
+    `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}"/>` +
+    `<line x1="${x1}" y1="${y}" x2="${x1+tip}" y2="${y-tip}"/>` +
+    `<line x1="${x1}" y1="${y}" x2="${x1+tip}" y2="${y+tip}"/>` +
+    `<line x1="${x2}" y1="${y}" x2="${x2-tip}" y2="${y-tip}"/>` +
+    `<line x1="${x2}" y1="${y}" x2="${x2-tip}" y2="${y+tip}"/>` +
+    `</g>` +
+    `<text class="arrow-label" x="${Math.round((x1+x2)/2)}" y="${y-6}">${escapeHtml(label)}</text>`;
+}
+
+/* ==================================================================
+   Layer 2 — Layout Calculator
+   ================================================================== */
+const CH_ROW_H = 60;
+const TOP_MARGIN = 60;
+const INTER_ROW_GAP = 30;
+const LABEL_WIDTH = 130;
+const LEFT_PAD = 10;
+const RIGHT_PAD = 40;
+const SLOPE_W = 3;
+
+function calculateLayout(channels, stepSize) {
+  const maxSteps = Math.max(1, ...channels.map(c => (c.code || '').length));
+  const waveX0 = LEFT_PAD + LABEL_WIDTH;
+  const svgW = waveX0 + maxSteps * stepSize + RIGHT_PAD;
+  const labelX = waveX0 - 8;
+
+  let totalY = TOP_MARGIN;
+  const channelRows = {};
+
+  channels.forEach((ch, idx) => {
+    const h = CH_ROW_H;
+    if (idx > 0) totalY += INTER_ROW_GAP;
+    const top = totalY;
+    channelRows[ch.id] = {
+      top,
+      height: h,
+      highY: top + 8,
+      lowY: top + 44,
+      midY: top + 26,
+      busY: top + 26
+    };
+    totalY += h;
+  });
+
+  return {
+    svgW, svgH: totalY + 30,
+    labelX, waveX0,
+    stepSize,
+    maxSteps,
+    totalRowBottom: totalY,
+    arrowY: TOP_MARGIN - 24,
+    dashTop: 5,
+    dashBot: totalY,
+    channelRows
+  };
+}
+
+/* ==================================================================
+   Layer 3 — Waveform Builders
+   ================================================================== */
+
+function buildSingleWirePath(code, waveX0, row, stepSize) {
+  const elems = [];
+  const ss = stepSize;
+  const HH = 14;
+  const CY = row.busY;
+  let i = 0;
+  let labelOff = 0;
+  let curY = row.lowY;
+  let cmdSeg = [`M ${waveX0},${row.lowY}`];
+  let segStartX = waveX0;
+
+  function flushPath(endX) {
+    cmdSeg.push(`L ${endX},${curY}`);
+    elems.push({ type: 'path', d: cmdSeg.join(' ') });
+    cmdSeg = [`M ${endX},${curY}`];
+    segStartX = endX;
+  }
+
+  while (i < code.length) {
+    const si = i - labelOff;
+    const ch = code[i];
+    const xs = waveX0 + si * ss;
+    const xe = waveX0 + (si + 1) * ss;
+
+    if (ch === '|') {
+      flushPath(xs);
+      let breakEnd = i;
+      while (breakEnd < code.length && code[breakEnd] === '|') breakEnd++;
+      const breakX1 = waveX0 + (breakEnd - labelOff) * ss;
+      elems.push({ type: 'wave', x0: xs, x1: breakX1, y: row.midY });
+      cmdSeg = [`M ${breakX1},${curY}`];
+      segStartX = breakX1;
+      i = breakEnd;
+      continue;
+    }
+
+    const cl = ch.toLowerCase();
+
+    if (cl === 'x') {
+      let span = 1;
+      while (i + span < code.length && code[i + span] === '-') span++;
+      let label = null, labelLen = 0;
+      let bracePos = i + span;
+      if (bracePos < code.length && code[bracePos] === '{') {
+        let close = code.indexOf('}', bracePos + 1);
+        if (close !== -1) { label = code.substring(bracePos + 1, close); labelLen = close - bracePos + 1; }
+      }
+      // End current path, draw sloped connector to polygon left side
+      flushPath(xs);
+      const SX = 6;                              // fixed side half-width
+      const TX = SX / 2;                         // top/bottom diagonal inset
+      const leftX = xs + 2 + SX;                 // left side vertex (FIXED across spans)
+      const rightX = leftX + 2 * SX + (span - 1) * ss;  // right side shifts by ss per dash
+      const siEnd = si + span;
+      const endX = waveX0 + siEnd * ss;
+      // Sloped connector: curY → CY at polygon's left side vertex
+      elems.push({ type: 'path', d: `M ${xs},${curY} L ${xs + SLOPE_W},${CY} L ${leftX},${CY}` });
+      // Polygon: left half FIXED, right half same shape shifted by (span-1)*ss
+      // Diagonals narrow inward (standard hexagon): top/bottom edges are between side vertices
+      const pts = `${rightX},${CY} ${rightX-TX},${CY-HH} ${leftX+TX},${CY-HH} ${leftX},${CY} ${leftX+TX},${CY+HH} ${rightX-TX},${CY+HH}`;
+      const topW = (rightX - TX) - (leftX + TX);
+      const fs = label ? Math.max(6, Math.min(10, Math.floor(topW / (label.length * 1.2)))) : 10;
+      elems.push({ type: 'polygon', points: pts, cx: (leftX + rightX) / 2, cy: CY, label, fs });
+      // Resume path from functional step end (skip the polygon-overhang artifact)
+      cmdSeg = [`M ${endX},${CY}`];
+      curY = CY;
+      segStartX = endX;
+      i += span + labelLen;
+      labelOff += labelLen;
+      continue;
+    }
+
+    if (cl === 'l') {
+      if (curY !== row.lowY) {
+        cmdSeg.push(`L ${xs},${curY} L ${xs + SLOPE_W},${row.lowY}`);
+      }
+      cmdSeg.push(`L ${xe},${row.lowY}`);
+      curY = row.lowY;
+    } else if (cl === 'h') {
+      if (curY !== row.highY) {
+        cmdSeg.push(`L ${xs},${curY} L ${xs + SLOPE_W},${row.highY}`);
+      }
+      cmdSeg.push(`L ${xe},${row.highY}`);
+      curY = row.highY;
+    } else if (cl === 'c') {
+      const q = ss * 0.3;
+      const riseX = xs + q;
+      const fallX = xs + ss - q;
+      if (curY !== row.lowY) {
+        cmdSeg.push(`L ${xs},${curY} L ${xs + SLOPE_W},${row.lowY}`);
+      }
+      cmdSeg.push(`L ${riseX},${row.lowY}`);
+      cmdSeg.push(`L ${riseX + SLOPE_W},${row.highY}`);
+      cmdSeg.push(`L ${fallX},${row.highY}`);
+      cmdSeg.push(`L ${fallX + SLOPE_W},${row.lowY}`);
+      cmdSeg.push(`L ${xe},${row.lowY}`);
+      curY = row.lowY;
+    } else if (cl === 'z') {
+      if (curY !== row.midY) {
+        cmdSeg.push(`L ${xs},${curY} L ${xs + SLOPE_W},${row.midY}`);
+      }
+      cmdSeg.push(`L ${xe},${row.midY}`);
+      curY = row.midY;
+    } else {
+      cmdSeg.push(`L ${xe},${curY}`);
+    }
+    i++;
+  }
+
+  flushPath(waveX0 + (code.length - labelOff) * ss);
+  return elems;
+}
+
+function buildBusPath(code, waveX0, row, stepSize) {
+  const ss = stepSize;
+  const HH = 14;
+  const CY = row.busY;
+  const ZY = CY;
+  const elems = [];
+  let i = 0;           // code character index
+  let labelOffset = 0; // total consumed label chars (excluded from step positions)
+  let atBus = true;    // current level is busY (false when we are at L/H/Z level)
+  let lastY = CY;      // y-level of last non-baseline element
+
+  function baselineStartX() { return baselineStart; }
+  let baselineStart = waveX0;
+  let inBaseline = true;
+
+  function endBaseline(endX) {
+    if (inBaseline && endX > baselineStart) {
+      elems.push({ type: 'baseline', x0: baselineStart, x1: endX });
+    }
+    inBaseline = false;
+  }
+
+  function startBaseline(x) {
+    baselineStart = x;
+    inBaseline = true;
+  }
+
+  function emitVConn(x, y1, y2) {
+    if (Math.abs(y1 - y2) > 1) {
+      elems.push({ type: 'vconn', x, y1, y2 });
+    }
+  }
+
+  while (i < code.length) {
+    const si = i - labelOffset;                     // effective step index
+    const ch = code[i];
+    const xs = waveX0 + si * ss;
+    const xe = waveX0 + (si + 1) * ss;
+    const cl = ch.toLowerCase();
+
+    if (ch === '|') {
+      endBaseline(xs);
+      let breakEnd = i;                             // code index
+      while (breakEnd < code.length && code[breakEnd] === '|') breakEnd++;
+      const breakX1 = waveX0 + (breakEnd - labelOffset) * ss;
+      elems.push({ type: 'wave', x0: xs, x1: breakX1, y: CY });
+      atBus = true; lastY = CY;
+      i = breakEnd;
+      startBaseline(breakX1);
+      continue;
+    }
+
+    if (cl === 'x') {
+      let span = 1;
+      while (i + span < code.length && code[i + span] === '-') span++;
+      let label = null, labelLen = 0;
+      let bracePos = i + span;
+      if (bracePos < code.length && code[bracePos] === '{') {
+        let close = code.indexOf('}', bracePos + 1);
+        if (close !== -1) {
+          label = code.substring(bracePos + 1, close);
+          labelLen = close - bracePos + 1;
+        }
+      }
+      const siEnd = si + span;
+      endBaseline(xs);
+      if (!atBus) emitVConn(xs, lastY, CY);
+      // Hand-built 6-vertex polygon: SX ≥ TX always, so no pinch.
+      // TX grows faster than SX to widen the top/bottom edges while keeping a hexagon silhouette.
+      const midX = waveX0 + (si + span / 2) * ss;
+      const SX = 8 + (span - 1) * 9;              // side half-width (grows slowly)
+      const TX = 5 + (span - 1) * 8;              // top/bottom half-width (grows faster)
+      const pts = `${midX+SX},${CY} ${midX+TX},${CY-HH} ${midX-TX},${CY-HH} ${midX-SX},${CY} ${midX-TX},${CY+HH} ${midX+TX},${CY+HH}`;
+      const topW = TX * 2;
+      const fs = label ? Math.max(6, Math.min(10, Math.floor(topW / (label.length * 1.2)))) : 10;
+      elems.push({ type: 'polygon', points: pts, cx: midX, cy: CY, label, fs });
+      atBus = true; lastY = CY;
+      i += span + labelLen;
+      labelOffset += labelLen;
+      startBaseline(waveX0 + siEnd * ss);
+      continue;
+    }
+
+    if (cl === 'z') {
+      endBaseline(xs);
+      if (atBus) emitVConn(xs, CY, ZY);
+      elems.push({ type: 'zseg', xs, xe, y: ZY });
+      atBus = false; lastY = ZY;
+      startBaseline(xe);
+    } else if (cl === 'l') {
+      endBaseline(xs);
+      if (atBus) emitVConn(xs, CY, row.lowY);
+      elems.push({ type: 'lowseg', xs, xe, y: row.lowY });
+      atBus = false; lastY = row.lowY;
+      startBaseline(xe);
+    } else if (cl === 'h') {
+      endBaseline(xs);
+      if (atBus) emitVConn(xs, CY, row.highY);
+      elems.push({ type: 'highseg', xs, xe, y: row.highY });
+      atBus = false; lastY = row.highY;
+      startBaseline(xe);
+    } else {
+      if (/^[a-zA-Z0-9_]$/.test(ch)) {
+        endBaseline(xs);
+        if (!atBus) emitVConn(xs, lastY, CY);
+        const midX = (xs + xe) / 2;
+        const SX = 6, TX = SX / 2;
+        const pts = `${midX+SX},${CY} ${midX+TX},${CY-HH} ${midX-TX},${CY-HH} ${midX-SX},${CY} ${midX-TX},${CY+HH} ${midX+TX},${CY+HH}`;
+        elems.push({ type: 'polygon', points: pts, cx: midX, cy: CY, label: ch, fs: 10 });
+        atBus = true; lastY = CY;
+        startBaseline(xe);
+      }
+    }
+    i++;
+  }
+  const finalX = waveX0 + (code.length - labelOffset) * ss;
+  endBaseline(finalX);
+  if (!atBus) emitVConn(finalX, lastY, CY);
+
+  return elems;
+}
+
+/* ==================================================================
+   Layer 4 — Annotation Builder
+   ================================================================== */
+function buildAnnotationSVG(ann, layout) {
+  let s = ann.startStep, e = ann.endStep;
+  if (s > e) { const t = s; s = e; e = t; }
+  const x1 = layout.waveX0 + s * layout.stepSize;
+  const x2 = layout.waveX0 + e * layout.stepSize;
+  const parts = [];
+
+  // Find target channel row; fall back to global extents if none selected
+  const row = (ann.channelId && layout.channelRows[ann.channelId])
+    ? layout.channelRows[ann.channelId] : null;
+  const dTop = row ? row.top : layout.dashTop;
+  const dBot = (row && !ann.extendAll)
+    ? row.top + row.height
+    : layout.totalRowBottom;   // extendAll → down through all channels below target
+  const arrowY = row ? row.top - 14 : layout.arrowY;
+
+  parts.push(`<line class="dash" x1="${x1}" y1="${dTop}" x2="${x1}" y2="${dBot}"/>`);
+  parts.push(`<line class="dash" x1="${x2}" y1="${dTop}" x2="${x2}" y2="${dBot}"/>`);
+  parts.push(arrowSVG(x1, x2, arrowY, ann.label));
+
+  return parts.join('\n');
+}
+
+/* ==================================================================
+   Layer 5 — SVG Assembler
+   ================================================================== */
+function buildSVGString(channels, annotations, stepSize) {
+  const steps = stepSize || 20;
+  const layout = calculateLayout(channels, steps);
+  const parts = [];
+
+  parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${layout.svgW} ${layout.svgH}" width="${layout.svgW}" height="${layout.svgH}">`);
+  parts.push('<defs><style>');
+  parts.push('.sig{fill:none;stroke:#1a1a1a;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}');
+  parts.push('.dash{fill:none;stroke:#aaa;stroke-width:1.2;stroke-dasharray:6,4;}');
+  parts.push('.label{font-family:Arial,Helvetica,sans-serif;font-size:14px;fill:#333;}');
+  parts.push('.dlabel{font-family:Arial,Helvetica,sans-serif;font-size:10px;fill:#1a1a1a;text-anchor:middle;dominant-baseline:central;}');
+  parts.push('.hex{fill:#dce8fc;stroke:#1a1a1a;stroke-width:1.5;}');
+  parts.push('.arrow-line{fill:none;stroke:#666;stroke-width:1.2;}');
+  parts.push('.arrow-label{font-family:Arial,Helvetica,sans-serif;font-size:13px;fill:#666;text-anchor:middle;}');
+  parts.push('</style></defs>');
+
+  // white background
+  parts.push(`<rect width="${layout.svgW}" height="${layout.svgH}" fill="#ffffff"/>`);
+
+  // channel labels
+  channels.forEach(ch => {
+    const row = layout.channelRows[ch.id];
+    if (!row) return;
+    const name = escapeHtml(ch.name || '?');
+    const labelY = row.top + row.height / 2 + 5;
+    parts.push(`<text class="label" x="${layout.labelX}" y="${labelY}" text-anchor="end">${name}</text>`);
+  });
+
+  // channel waveforms
+  channels.forEach(ch => {
+    const row = layout.channelRows[ch.id];
+    if (!row) return;
+    const code = ch.code || '';
+
+      const elems = buildSingleWirePath(code, layout.waveX0, row, steps);
+      elems.forEach(el => {
+        if (el.type === 'path') {
+          parts.push(`<path class="sig" d="${el.d}"/>`);
+        } else if (el.type === 'polygon') {
+          parts.push(`<polygon class="hex" points="${el.points}"/>`);
+          if (el.label) {
+            parts.push(`<text class="dlabel" font-size="${el.fs||10}" x="${el.cx}" y="${el.cy}">${escapeHtml(el.label)}</text>`);
+          }
+        } else if (el.type === 'wave') {
+          parts.push(`<path class="sig" d="${wavePath(el.x0, el.x1, el.y)}"/>`);
+        }
+      });
+  });
+
+  // annotations
+  annotations.forEach(ann => {
+    parts.push(buildAnnotationSVG(ann, layout));
+  });
+
+  parts.push('</svg>');
+  return parts.join('\n');
+}
+
+/* ==================================================================
+   Layer 6 — State & Rendering
+   ================================================================== */
+function getState() {
+  const channels = [];
+  document.querySelectorAll('.channel-card').forEach(card => {
+    const id = card.dataset.channelId;
+    const nameEl = card.querySelector('.channel-name');
+    const codeEl = card.querySelector('.channel-code');
+    channels.push({
+      id,
+      name: nameEl ? nameEl.value : '',
+      code: codeEl ? codeEl.value : ''
+    });
+  });
+
+  const annotations = [];
+  document.querySelectorAll('.annotation-card').forEach(card => {
+    const id = card.dataset.annotationId;
+    const startEl = card.querySelector('.ann-start');
+    const endEl = card.querySelector('.ann-end');
+    const labelEl = card.querySelector('.ann-label');
+    const chSel = card.querySelector('.ann-channel');
+    const extCb = card.querySelector('.ann-extend');
+    annotations.push({
+      id,
+      startStep: startEl ? parseInt(startEl.value) || 0 : 0,
+      endStep: endEl ? parseInt(endEl.value) || 0 : 0,
+      label: labelEl ? labelEl.value : '',
+      channelId: chSel ? chSel.value : '',
+      extendAll: extCb ? extCb.checked : true
+    });
+  });
+
+  return { channels, annotations };
+}
+
+function saveState() {
+  const { channels, annotations } = getState();
+  localStorage.setItem('wavetool_state', JSON.stringify({ channels, annotations }));
+}
+
+function restoreState() {
+  try {
+    const raw = localStorage.getItem('wavetool_state');
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data.channels || !Array.isArray(data.channels)) return false;
+    data.channels.forEach(ch => addChannelCardToDOM(generateId(), ch.name, ch.code));
+    if (data.annotations && Array.isArray(data.annotations)) {
+      data.annotations.forEach(ann =>
+        addAnnotationCardToDOM(generateId(), ann.startStep, ann.endStep, ann.label, ann.channelId, ann.extendAll));
+    }
+    refreshAnnotationChannels();
+    return true;
+  } catch (e) { return false; }
+}
+
+function render() {
+  const { channels, annotations } = getState();
+  const svg = buildSVGString(channels, annotations, 20);
+  document.getElementById('svgOutput').innerHTML = svg;
+  saveState();
+}
+
+const scheduleRender = debounce(render, 50);
+
+function renderImmediate() {
+  render();
+}
+
+/* ==================================================================
+   Layer 7 — UI Builders
+   ================================================================== */
+function addChannelCardToDOM(id, name, code) {
+  const container = document.getElementById('channelsContainer');
+  const div = document.createElement('div');
+  div.className = 'channel-card bg-white rounded-lg shadow-sm border border-gray-200 p-3';
+  div.dataset.channelId = id;
+  div.innerHTML =
+    `<div class="flex items-center gap-2 mb-2">` +
+      `<span class="text-xs text-gray-500 shrink-0">信号名称</span>` +
+      `<input class="channel-name flex-1 border border-gray-300 rounded px-2 py-1 text-sm font-medium" value="${escapeHtml(name||'')}" placeholder="如 CE#、ADDR">` +
+      `<button class="remove-btn text-gray-400 text-lg leading-none px-1" title="删除通道">&times;</button>` +
+    `</div>` +
+    `<div class="mb-1"><span class="text-xs text-gray-500">波形代码</span></div>` +
+    `<textarea class="channel-code w-full border border-gray-300 rounded px-2 py-1.5 text-sm resize-none" rows="2" placeholder="L L H H C | X X Z">${escapeHtml(code||'')}</textarea>` +
+    `<button class="help-btn text-xs text-blue-500 hover:text-blue-700 mt-1">使用方法</button>`;
+
+  container.appendChild(div);
+}
+
+function addAnnotationCardToDOM(id, startStep, endStep, label, channelId, extendAll) {
+  if (extendAll === undefined) extendAll = false;
+  if (!channelId) {
+    const firstCard = document.querySelector('.channel-card');
+    if (firstCard) channelId = firstCard.dataset.channelId;
+  }
+  const container = document.getElementById('annotationsContainer');
+  const div = document.createElement('div');
+  div.className = 'annotation-card bg-white rounded-lg shadow-sm border border-gray-200 p-3';
+  div.dataset.annotationId = id;
+  div.innerHTML =
+    `<div class="flex items-center gap-2 mb-2">` +
+      `<span class="text-xs text-gray-500 shrink-0">步长</span>` +
+      `<input class="ann-start w-12 border border-gray-300 rounded px-1 py-1 text-sm text-center shrink-0" type="number" min="0" value="${startStep||0}">` +
+      `<span class="text-xs text-gray-500 shrink-0">至</span>` +
+      `<input class="ann-end w-12 border border-gray-300 rounded px-1 py-1 text-sm text-center shrink-0" type="number" min="0" value="${endStep||0}">` +
+      `<input class="ann-label flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-sm" placeholder="t_su 等" value="${escapeHtml(label||'')}">` +
+      `<button class="remove-btn text-gray-400 text-lg leading-none px-1 shrink-0" title="删除测量">&times;</button>` +
+    `</div>` +
+    `<div class="flex items-center gap-2">` +
+      `<span class="text-xs text-gray-500 shrink-0">目标通道</span>` +
+      `<select class="ann-channel border border-gray-300 rounded px-1 py-1 text-xs bg-white flex-1 min-w-0">` +
+      `</select>` +
+      `<label class="flex items-center gap-1 text-xs text-gray-500 cursor-pointer select-none shrink-0">` +
+        `<input type="checkbox" class="ann-extend" ${extendAll ? 'checked' : ''}> 延长虚线` +
+      `</label>` +
+    `</div>`;
+
+  container.appendChild(div);
+
+  // Populate channel dropdown with current channels
+  const sel = div.querySelector('.ann-channel');
+  refreshSingleAnnotationDropdown(sel, channelId || '');
+}
+
+function refreshSingleAnnotationDropdown(sel, selectedId) {
+  const currentVal = selectedId || sel.value;
+  sel.innerHTML = '';
+  document.querySelectorAll('.channel-card').forEach(card => {
+    const cid = card.dataset.channelId;
+    const nameEl = card.querySelector('.channel-name');
+    const name = nameEl ? (nameEl.value || '?') : '?';
+    const opt = document.createElement('option');
+    opt.value = cid;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+  if (currentVal && [...sel.options].some(o => o.value === currentVal)) {
+    sel.value = currentVal;
+  } else if (sel.options.length > 0) {
+    sel.selectedIndex = 0;
+  }
+}
+
+function refreshAnnotationChannels() {
+  document.querySelectorAll('.annotation-card').forEach(card => {
+    const sel = card.querySelector('.ann-channel');
+    if (sel) refreshSingleAnnotationDropdown(sel, sel.value);
+  });
+}
+
+function removeElement(id) {
+  const el = document.querySelector(`[data-channel-id="${id}"], [data-annotation-id="${id}"]`);
+  if (el) el.remove();
+}
+
+/* ==================================================================
+   Layer 8 — Presets
+   ================================================================== */
+const PRESETS = {
+  adc: {
+    channels: [
+      { name: 'CNV',  code: 'LLLHHHHHLLLLLLL' },
+      { name: 'SCK',  code: 'LLLLLCHCHC||CHCHLLL' },
+      { name: 'SDO',  code: 'LLLLLLXXXXXX||XXXXLLL' }
+    ],
+    annotations: [
+      { startStep: 3, endStep: 8, label: 't_CONV' },
+      { startStep: 8, endStep: 17, label: 't_ACQ' }
+    ]
+  },
+  mram: {
+    channels: [
+      { name: 'CE#',  code: 'HHHHHHLLLLLLHHHH' },
+      { name: 'WE#',  code: 'HHHHHLLLLLLLHHHH' },
+      { name: 'ADDR', code: 'HHHHHXXXXXXXXXXXHHH' },
+      { name: 'DQ',   code: 'HHHHHHXXXXXXHHHHHH' }
+    ],
+    annotations: [
+      { startStep: 6, endStep: 12, label: 't_WC' },
+      { startStep: 6, endStep: 6, label: 't_AS' },
+      { startStep: 8, endStep: 10, label: 't_DV' }
+    ]
+  }
+};
+
+function loadPreset(preset) {
+  document.getElementById('channelsContainer').innerHTML = '';
+  document.getElementById('annotationsContainer').innerHTML = '';
+
+  preset.channels.forEach(ch => {
+    addChannelCardToDOM(generateId(), ch.name, ch.code);
+  });
+  preset.annotations.forEach(ann => {
+    addAnnotationCardToDOM(generateId(), ann.startStep, ann.endStep, ann.label, ann.channelId || '', ann.extendAll !== false);
+  });
+  refreshAnnotationChannels();
+  renderImmediate();
+}
+
+/* ==================================================================
+   Event Wiring
+   ================================================================== */
+function setupEvents() {
+  // Add channel
+  document.getElementById('addChannelBtn').addEventListener('click', () => {
+    addChannelCardToDOM(generateId(), '', '');
+    refreshAnnotationChannels();
+    renderImmediate();
+  });
+
+  // Add annotation
+  document.getElementById('addAnnotationBtn').addEventListener('click', () => {
+    addAnnotationCardToDOM(generateId(), 0, 0, '');
+    renderImmediate();
+  });
+
+  // Presets
+  document.getElementById('presetAdcBtn').addEventListener('click', () => loadPreset(PRESETS.adc));
+  document.getElementById('presetMramBtn').addEventListener('click', () => loadPreset(PRESETS.mram));
+
+  // Export
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const { channels, annotations } = getState();
+    const svg = '<?xml version="1.0" encoding="UTF-8"?>\n' + buildSVGString(channels, annotations, 20);
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'timing_diagram.svg';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  // Event delegation on control panel
+  document.getElementById('controlPanel').addEventListener('input', (e) => {
+    if (e.target.matches('.channel-name')) refreshAnnotationChannels();
+    // Only debounce for text inputs / textareas
+    if (e.target.matches('input[type="text"], textarea, input[type="number"]')) {
+      scheduleRender();
+    }
+  });
+
+  document.getElementById('controlPanel').addEventListener('click', (e) => {
+    if (e.target.matches('.help-btn') || e.target.closest('.help-btn')) {
+      document.getElementById('helpModal').classList.remove('hidden');
+      return;
+    }
+    if (e.target.matches('.remove-btn') || e.target.closest('.remove-btn')) {
+      const card = e.target.closest('[data-channel-id], [data-annotation-id]');
+      if (card) {
+        const wasChannel = card.hasAttribute('data-channel-id');
+        card.remove();
+        if (wasChannel) refreshAnnotationChannels();
+        renderImmediate();
+      }
+    }
+  });
+
+  document.getElementById('closeHelpBtn').addEventListener('click', () => {
+    document.getElementById('helpModal').classList.add('hidden');
+  });
+  document.getElementById('helpModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('helpModal')) {
+      document.getElementById('helpModal').classList.add('hidden');
+    }
+  });
+}
+
+/* ==================================================================
+   Initialization
+   ================================================================== */
+document.addEventListener('DOMContentLoaded', () => {
+  setupEvents();
+  if (!restoreState()) {
+    addChannelCardToDOM(generateId(), 'SIG', 'LLHHLL');
+    addAnnotationCardToDOM(generateId(), 2, 4, 't_PW', '', false);
+  }
+  renderImmediate();
+});
+
+})();
+</script>
+</body>
+</html>
