@@ -281,7 +281,7 @@ function buildSingleWirePath(code, waveX0, row, stepSize) {
       const siEnd = si + span;
       const endX = waveX0 + siEnd * ss;
       // Sloped connector: curY → CY at polygon's left side vertex
-      elems.push({ type: 'path', d: `M ${xs},${curY} L ${xs + SLOPE_W},${CY} L ${leftX},${CY}` });
+      elems.push({ type: 'path', d: `M ${xs},${curY} L ${leftX},${CY}` });
       // Polygon: left half FIXED, right half same shape shifted by (span-1)*ss
       // Diagonals narrow inward (standard hexagon): top/bottom edges are between side vertices
       const pts = `${rightX},${CY} ${rightX-TX},${CY-HH} ${leftX+TX},${CY-HH} ${leftX},${CY} ${leftX+TX},${CY+HH} ${rightX-TX},${CY+HH}`;
