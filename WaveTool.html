@@ -272,25 +272,20 @@ function buildSingleWirePath(code, waveX0, row, stepSize) {
           }
         }
       }
-      // End current path, draw sloped connector to polygon left side
       flushPath(xs);
       const SX = 6;                              // fixed side half-width
       const TX = SX / 2;                         // top/bottom diagonal inset
-      const leftX = xs + 2 + SX;                 // left side vertex (FIXED across spans)
+      const leftX = xs + SX;                     // left side vertex aligns with step edge
       const rightX = leftX + 2 * SX + (span - 1) * ss;  // right side shifts by ss per dash
       const siEnd = si + span;
       const endX = waveX0 + siEnd * ss;
-      // Sloped connector: curY → CY at polygon's left side vertex
-      elems.push({ type: 'path', d: `M ${xs},${curY} L ${leftX},${CY}` });
-      // Polygon: left half FIXED, right half same shape shifted by (span-1)*ss
-      // Diagonals narrow inward (standard hexagon): top/bottom edges are between side vertices
+      // Polygon only — no connector lines into or out of the bus step
       const pts = `${rightX},${CY} ${rightX-TX},${CY-HH} ${leftX+TX},${CY-HH} ${leftX},${CY} ${leftX+TX},${CY+HH} ${rightX-TX},${CY+HH}`;
       const topW = (rightX - TX) - (leftX + TX);
       const gFontSize = parseInt(document.getElementById('globalFontSize')?.value) || 14;
       const requested = labelSize || gFontSize;
       const fs = label ? Math.max(6, requested) : 10;
       elems.push({ type: 'polygon', points: pts, cx: (leftX + rightX) / 2, cy: CY, label, fs });
-      // Resume path from functional step end (skip the polygon-overhang artifact)
       cmdSeg = [`M ${endX},${CY}`];
       curY = CY;
       segStartX = endX;
