@@ -276,9 +276,9 @@ function buildSingleWirePath(code, waveX0, row, stepSize) {
       const SX = 6;                              // fixed side half-width
       const TX = SX / 2;                         // top/bottom diagonal inset
       const leftX = xs;                           // left side vertex at step boundary
-      const rightX = leftX + 2 * SX + (span - 1) * ss;  // right side shifts by ss per dash
       const siEnd = si + span;
       const endX = waveX0 + siEnd * ss;
+      const rightX = endX;                         // right side vertex at step end (fills span)
       // Polygon only — no connector lines into or out of the bus step
       const pts = `${rightX},${CY} ${rightX-TX},${CY-HH} ${leftX+TX},${CY-HH} ${leftX},${CY} ${leftX+TX},${CY+HH} ${rightX-TX},${CY+HH}`;
       const topW = (rightX - TX) - (leftX + TX);
