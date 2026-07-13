@@ -154,14 +154,14 @@ function wavePath(x0, x1, cy, n) {
 function arrowSVG(x1, x2, y, label, color) {
   const tip = 4;
   const c = color || '#666';
-  return `<g class="arrow-line" style="stroke:${c}">` +
+  return `<g fill="none" stroke="${c}" stroke-width="1.2">` +
     `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}"/>` +
     `<line x1="${x1}" y1="${y}" x2="${x1+tip}" y2="${y-tip}"/>` +
     `<line x1="${x1}" y1="${y}" x2="${x1+tip}" y2="${y+tip}"/>` +
     `<line x1="${x2}" y1="${y}" x2="${x2-tip}" y2="${y-tip}"/>` +
     `<line x1="${x2}" y1="${y}" x2="${x2-tip}" y2="${y+tip}"/>` +
     `</g>` +
-    `<text class="arrow-label" style="fill:${c}" x="${Math.round((x1+x2)/2)}" y="${y-6}">${escapeHtml(label)}</text>`;
+    `<text fill="${c}" font-family="Arial,Helvetica,sans-serif" font-size="13" text-anchor="middle" x="${Math.round((x1+x2)/2)}" y="${y-6}">${escapeHtml(label)}</text>`;
 }
 
 /* ==================================================================
@@ -794,8 +794,13 @@ function setupEvents() {
   // Event delegation on control panel
   document.getElementById('controlPanel').addEventListener('input', (e) => {
     if (e.target.matches('.channel-name')) refreshAnnotationChannels();
-    // Only debounce for text inputs / textareas
     if (e.target.matches('input[type="text"], textarea, input[type="number"]')) {
+      scheduleRender();
+    }
+  });
+
+  document.getElementById('controlPanel').addEventListener('change', (e) => {
+    if (e.target.matches('.ann-channel, .ann-extend')) {
       scheduleRender();
     }
   });
