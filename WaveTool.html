@@ -275,7 +275,7 @@ function buildSingleWirePath(code, waveX0, row, stepSize) {
       flushPath(xs);
       const SX = 6;                              // fixed side half-width
       const TX = SX / 2;                         // top/bottom diagonal inset
-      const leftX = xs + SX;                     // left side vertex aligns with step edge
+      const leftX = xs;                           // left side vertex at step boundary
       const rightX = leftX + 2 * SX + (span - 1) * ss;  // right side shifts by ss per dash
       const siEnd = si + span;
       const endX = waveX0 + siEnd * ss;
