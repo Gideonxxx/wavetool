@@ -288,7 +288,7 @@ function buildSingleWirePath(code, waveX0, row, stepSize) {
       const topW = (rightX - TX) - (leftX + TX);
       const gFontSize = parseInt(document.getElementById('globalFontSize')?.value) || 14;
       const requested = labelSize || gFontSize;
-      const fs = label ? Math.max(6, Math.min(requested, Math.floor(topW / (label.length * 1.2)))) : 10;
+      const fs = label ? Math.max(6, requested) : 10;
       elems.push({ type: 'polygon', points: pts, cx: (leftX + rightX) / 2, cy: CY, label, fs });
       // Resume path from functional step end (skip the polygon-overhang artifact)
       cmdSeg = [`M ${endX},${CY}`];
