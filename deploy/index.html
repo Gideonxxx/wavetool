@@ -6,16 +6,18 @@
 <title>波形绘制工具</title>
   <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAD7klEQVR4nKVWS4wbRRCt6h5717PxLnhDlqBELFgkER/xE3sLFyQQJ65cEJzhyi1C4g4CjpwXbgghkcsiEEIitwAiEh+hIEQ+ewnE+3G89rin66HuGY/n53VWlEb2TE13fV5VvxoGQAQqCPvfkrL09m4lIAJgj7KZKxpU9cwqc3DUoJC3AojT8MyEUz//W7guDueT4cQSi1fO9MfsTPiCJduF2d3Dhci5siHvjFknEJXSKyzKyRQIVo2pGjE5Z1yLkvII5t/4x4LGCZCFL8za3rlifn9D/r5Atu8d+0qkUBX2JhlkMqs1KZe+hunJlVf04BopEjvQ3Y8AQ2nblFMvOqgEXhR2iSiNUU/9dov5JO30sHsV3dySSuZH7CImEsNLD0v4Jn0J+WadTr/tsJ/ahe+XXCsDAoprLGHG4QBYBSAyP17WD3b18Y7HJ3nlu8D9pH3FrIoQJUbTFfXmmRjWDt9/j77ass881XznXb3c9sct2ZL0Um47IIJxekksYgTG39Rd8QjA+PtLg9V7+mfW+8th9OkmABmPatcDUuqiLIQaenGStOLtfxqtxTgMVTvk/V3KCyf1mG6sOpgvvKj0ShR0DAfGrqjDySznII970q8lNCdPvGLxxJDvjXAwoo5xKiU+9qw14NnUlTpzkFX/LmQ55sciOjaiKKJVc0iqJYiSFvZRzDof7CMIBadALcMx8Yr4ZFUxOM5O/pwaWJBmEjjLmQE0SVYJDVIgtThVTyiPZ9UgQW2ymphYBS5k0Z5nYrEK1rW8irlFWNAcEynloZUJF032I6XFmVThweLNqztPf3Hj1W+396I4UFrplmKl9ra4SU1nnqhx/HD+Cips76otgGb9a2/4+uU9ai79fONg++trH26cvL/17/Wdz37a+Y6OnXkp3n2EGra94TlBVcFJxnL9QXMJMv3ZHxPrhaWmpejS7eFzF7dPNH/YOP3J6tIDbQ5iPXjrvpeD8FFCVMInL6oyrVwUyhEzzq+Fp1o22j9QZJuthg7jW+bZvnncWH19FO8G53j9g7S/y+HDj1hvqtatqyyks9i4+PzauZYZD+PxyNhhoINfjPxxczA8sXD2te7HwUIXcIUu7s6Kkg59AZlKFzkRkFbqjrGbf+1vbe/3xjfPLn/+UFs92Tn/wtqLYRAKxsnHwATbhK6nSDAFJQf5HBIf0CpzHPmaJWUTIcOF2EtDP5kHOhs41S+JlNlBZMmyK4z7QgAs/H3u5FUAntSj5KCWFXmCpvc3Z2jneB4q4bu5dI3Jv6RENEey2NMuyr5Na0MrMkdBUxcEkbUiFgl9uOGt3ExmJk3uqtqdo8s5SH24OimZtBYz83+aoQBdljzllAAAAABJRU5ErkJggg==">
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="vendor/opentype.min.js"></script>
+<script src="assets/NotoSansSC-data.js"></script>
 <style>
 /* ── SVG rendering classes ── */
 .sig{fill:none;stroke:#1a1a1a;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 .dash{fill:none;stroke:#aaa;stroke-width:1.2;stroke-dasharray:6,4;}
-.label{font-family:Arial,Helvetica,sans-serif;font-size:14px;fill:#333;}
-.dlabel{font-family:Arial,Helvetica,sans-serif;fill:#1a1a1a;text-anchor:middle;dominant-baseline:central;}
+.label{font-family:'Microsoft YaHei','微软雅黑',SimSun,'宋体',sans-serif;font-size:14px;fill:#333;}
+.dlabel{font-family:'Microsoft YaHei','微软雅黑',SimSun,'宋体',sans-serif;fill:#1a1a1a;text-anchor:middle;}
 .hex{fill:#dce8fc;stroke:#1a1a1a;stroke-width:1.5;}
 .bus-bg{fill:none;stroke:#1a1a1a;stroke-width:2;}
 .arrow-line{fill:none;stroke:#666;stroke-width:1.2;}
-.arrow-label{font-family:Arial,Helvetica,sans-serif;font-size:13px;fill:#666;text-anchor:middle;}
+.arrow-label{font-family:'Microsoft YaHei','微软雅黑',SimSun,'宋体',sans-serif;font-size:13px;fill:#666;text-anchor:middle;}
 /* ── Panel UI ── */
 .channel-card,.annotation-card{transition:border-color 0.2s;}
 .channel-card:hover,.annotation-card:hover{border-color:#93c5fd;}
@@ -66,8 +68,12 @@
     <div class="flex gap-2">
       <button id="presetAdcBtn" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-2 py-2 rounded border border-indigo-200 font-medium transition-colors">1. 3线ADC采样</button>
       <button id="presetMramBtn" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-2 py-2 rounded border border-indigo-200 font-medium transition-colors">2. MRAM写时序</button>
+      <button id="presetDcadcBtn" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-2 py-2 rounded border border-indigo-200 font-medium transition-colors">3. DCADC时序</button>
     </div>
-    <button id="exportBtn" class="w-full bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-2.5 rounded font-semibold transition-colors">导出 SVG</button>
+    <div class="flex gap-2">
+      <button id="exportBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-2.5 rounded font-semibold transition-colors">导出标准 SVG</button>
+      <button id="exportWordBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2.5 rounded font-semibold transition-colors">导出 Word 兼容 SVG</button>
+    </div>
   </div>
 </div>
 
@@ -116,6 +122,35 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+const SVG_FONT_FAMILY = 'Microsoft YaHei, 微软雅黑, SimSun, 宋体, sans-serif';
+const EXPORT_MARGIN = 10;
+let wordExportFont = null;
+
+function baselineForCenter(centerY, fontSize) {
+  return Math.round((centerY + fontSize * 0.35) * 100) / 100;
+}
+
+function countEffectiveSteps(code) {
+  let i = 0, steps = 0;
+  while (i < code.length) {
+    if (code[i].toLowerCase() === 'x') {
+      let span = 1;
+      while (i + span < code.length && code[i + span] === '-') span++;
+      let next = i + span;
+      if (code[next] === '{') {
+        const close = code.indexOf('}', next + 1);
+        if (close !== -1) next = close + 1;
+      }
+      steps += span;
+      i = next;
+    } else {
+      steps++;
+      i++;
+    }
+  }
+  return steps;
+}
+
 function debounce(fn, delay) {
   let timer = null;
   return function(...args) {
@@ -161,7 +196,7 @@ function arrowSVG(x1, x2, y, label, color) {
     `<line x1="${x2}" y1="${y}" x2="${x2-tip}" y2="${y-tip}"/>` +
     `<line x1="${x2}" y1="${y}" x2="${x2-tip}" y2="${y+tip}"/>` +
     `</g>` +
-    `<text fill="${c}" font-family="Arial,Helvetica,sans-serif" font-size="13" text-anchor="middle" x="${Math.round((x1+x2)/2)}" y="${y-6}">${escapeHtml(label)}</text>`;
+    `<text fill="${c}" font-family="${SVG_FONT_FAMILY}" font-size="13" text-anchor="middle" x="${Math.round((x1+x2)/2)}" y="${y-6}">${escapeHtml(label)}</text>`;
 }
 
 /* ==================================================================
@@ -176,7 +211,7 @@ const RIGHT_PAD = 40;
 const SLOPE_W = 3;
 
 function calculateLayout(channels, stepSize) {
-  const maxSteps = Math.max(1, ...channels.map(c => (c.code || '').length));
+  const maxSteps = Math.max(1, ...channels.map(c => countEffectiveSteps(c.code || '')));
   const waveX0 = LEFT_PAD + LABEL_WIDTH;
   const svgW = waveX0 + maxSteps * stepSize + RIGHT_PAD;
   const labelX = waveX0 - 8;
@@ -496,23 +531,20 @@ function buildSVGString(channels, annotations, stepSize) {
   parts.push('<defs><style>');
   parts.push('.sig{fill:none;stroke:#1a1a1a;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}');
   parts.push('.dash{fill:none;stroke:#aaa;stroke-width:1.2;stroke-dasharray:6,4;}');
-  parts.push('.label{font-family:Arial,Helvetica,sans-serif;font-size:14px;fill:#333;}');
-  parts.push('.dlabel{font-family:Arial,Helvetica,sans-serif;fill:#1a1a1a;text-anchor:middle;dominant-baseline:central;}');
   parts.push('.hex{fill:#dce8fc;stroke:#1a1a1a;stroke-width:1.5;}');
-  parts.push('.arrow-line{fill:none;stroke:#666;stroke-width:1.2;}');
-  parts.push('.arrow-label{font-family:Arial,Helvetica,sans-serif;font-size:13px;fill:#666;text-anchor:middle;}');
   parts.push('</style></defs>');
 
   // white background
-  parts.push(`<rect width="${layout.svgW}" height="${layout.svgH}" fill="#ffffff"/>`);
+  parts.push(`<rect data-svg-background="true" x="0" y="0" width="${layout.svgW}" height="${layout.svgH}" fill="#ffffff"/>`);
+  parts.push('<g data-svg-content="true">');
 
   // channel labels
   channels.forEach(ch => {
     const row = layout.channelRows[ch.id];
     if (!row) return;
     const name = escapeHtml(ch.name || '?');
-    const labelY = row.top + row.height / 2 + 5;
-    parts.push(`<text class="label" x="${layout.labelX}" y="${labelY}" text-anchor="end">${name}</text>`);
+    const labelY = baselineForCenter(row.top + row.height / 2, 14);
+    parts.push(`<text x="${layout.labelX}" y="${labelY}" fill="#333" font-family="${SVG_FONT_FAMILY}" font-size="14" text-anchor="end">${name}</text>`);
   });
 
   // channel waveforms
@@ -526,10 +558,12 @@ function buildSVGString(channels, annotations, stepSize) {
         if (el.type === 'path') {
           parts.push(`<path class="sig" d="${el.d}"/>`);
         } else if (el.type === 'polygon') {
-          parts.push(`<polygon class="hex" points="${el.points}"/>`);
+          parts.push(`<g data-fit-box="true"><polygon class="hex" points="${el.points}"/>`);
           if (el.label) {
-            parts.push(`<text class="dlabel" font-size="${el.fs||10}" x="${el.cx}" y="${el.cy}">${escapeHtml(el.label)}</text>`);
+            const fontSize = el.fs || 10;
+            parts.push(`<text x="${el.cx}" y="${baselineForCenter(el.cy, fontSize)}" data-center-y="${el.cy}" fill="#1a1a1a" font-family="${SVG_FONT_FAMILY}" font-size="${fontSize}" text-anchor="middle">${escapeHtml(el.label)}</text>`);
           }
+          parts.push('</g>');
         } else if (el.type === 'wave') {
           parts.push(`<path class="sig" d="${wavePath(el.x0, el.x1, el.y)}"/>`);
         }
@@ -545,8 +579,173 @@ function buildSVGString(channels, annotations, stepSize) {
     parts.push(buildAnnotationSVG(ann, layout, color));
   });
 
+  parts.push('</g>');
   parts.push('</svg>');
   return parts.join('\n');
+}
+
+function parseSVG(svgString) {
+  const doc = new DOMParser().parseFromString(svgString, 'image/svg+xml');
+  const error = doc.querySelector('parsererror');
+  if (error) throw new Error('SVG 解析失败');
+  return doc.documentElement;
+}
+
+function mountSVGForMeasurement(svg) {
+  const holder = document.createElement('div');
+  holder.style.cssText = 'position:fixed;left:-100000px;top:-100000px;visibility:hidden;pointer-events:none;';
+  holder.appendChild(svg);
+  document.body.appendChild(holder);
+  return holder;
+}
+
+function fitBoxLabels(svg) {
+  svg.querySelectorAll('[data-fit-box="true"]').forEach(group => {
+    const polygon = group.querySelector('polygon');
+    const text = group.querySelector('text');
+    if (!polygon || !text) return;
+    const box = polygon.getBBox();
+    let fontSize = parseFloat(text.getAttribute('font-size')) || 10;
+    let textBox = text.getBBox();
+    while (fontSize > 6 && (textBox.width > box.width - 8 || textBox.height > box.height - 4)) {
+      fontSize--;
+      text.setAttribute('font-size', fontSize);
+      text.setAttribute('y', baselineForCenter(parseFloat(text.dataset.centerY), fontSize));
+      textBox = text.getBBox();
+    }
+  });
+}
+
+function fitSVGToContent(svg, margin) {
+  const content = svg.querySelector('[data-svg-content="true"]');
+  const background = svg.querySelector('[data-svg-background="true"]');
+  const box = content.getBBox();
+  const pad = Number.isFinite(margin) ? margin : EXPORT_MARGIN;
+  const x = Math.floor(box.x - pad);
+  const y = Math.floor(box.y - pad);
+  const width = Math.max(1, Math.ceil(box.width + pad * 2));
+  const height = Math.max(1, Math.ceil(box.height + pad * 2));
+  svg.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
+  svg.setAttribute('width', width);
+  svg.setAttribute('height', height);
+  if (background) {
+    background.setAttribute('x', x);
+    background.setAttribute('y', y);
+    background.setAttribute('width', width);
+    background.setAttribute('height', height);
+  }
+  return { x, y, width, height };
+}
+
+function assertTextInsideSVG(svg, bounds) {
+  const epsilon = 0.5;
+  svg.querySelectorAll('text').forEach(text => {
+    const box = text.getBBox();
+    if (box.x < bounds.x - epsilon || box.y < bounds.y - epsilon ||
+        box.x + box.width > bounds.x + bounds.width + epsilon ||
+        box.y + box.height > bounds.y + bounds.height + epsilon) {
+      throw new Error(`文字“${text.textContent}”超出 SVG 边界`);
+    }
+  });
+}
+
+function getWordExportFont() {
+  if (wordExportFont) return wordExportFont;
+  if (!window.opentype || !window.WAVETOOL_FONT_BASE64) {
+    throw new Error('文字转路径资源未加载，请确认 vendor 和 assets 目录完整');
+  }
+  const binary = atob(window.WAVETOOL_FONT_BASE64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  wordExportFont = window.opentype.parse(bytes.buffer);
+  return wordExportFont;
+}
+
+function convertTextToPaths(svg) {
+  const font = getWordExportFont();
+  Array.from(svg.querySelectorAll('text')).forEach(text => {
+    const value = text.textContent || '';
+    const computed = getComputedStyle(text);
+    let fontSize = parseFloat(text.getAttribute('font-size')) || parseFloat(computed.fontSize) || 14;
+    let y = parseFloat(text.getAttribute('y')) || 0;
+    let x = parseFloat(text.getAttribute('x')) || 0;
+    const anchor = text.getAttribute('text-anchor') || 'start';
+    const centerY = parseFloat(text.dataset.centerY);
+    const boxGroup = text.closest('[data-fit-box="true"]');
+    const box = boxGroup?.querySelector('polygon')?.getBBox();
+    let outline;
+    let pathX;
+    do {
+      const advance = font.getAdvanceWidth(value, fontSize, { kerning: true });
+      pathX = x;
+      if (anchor === 'middle') pathX -= advance / 2;
+      if (anchor === 'end') pathX -= advance;
+      if (Number.isFinite(centerY)) y = baselineForCenter(centerY, fontSize);
+      outline = font.getPath(value, pathX, y, fontSize, { kerning: true });
+      const outlineBox = outline.getBoundingBox();
+      if (!box || (outlineBox.x2 - outlineBox.x1 <= box.width - 8 && outlineBox.y2 - outlineBox.y1 <= box.height - 4) || fontSize <= 6) break;
+      fontSize--;
+    } while (true);
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', outline.toPathData(3));
+    path.setAttribute('fill', text.getAttribute('fill') || computed.fill || '#000000');
+    path.setAttribute('data-source-text', value);
+    text.replaceWith(path);
+  });
+  svg.querySelectorAll('[data-fit-box="true"]').forEach(group => {
+    const box = group.querySelector('polygon')?.getBBox();
+    const label = group.querySelector('path[data-source-text]')?.getBBox();
+    if (!box || !label) return;
+    const epsilon = 0.5;
+    if (label.x < box.x - epsilon || label.y < box.y - epsilon ||
+        label.x + label.width > box.x + box.width + epsilon ||
+        label.y + label.height > box.y + box.height + epsilon) {
+      throw new Error(`路径文字“${group.querySelector('[data-source-text]').dataset.sourceText}”超出数据框`);
+    }
+  });
+}
+
+async function createExportSVG(wordCompatible) {
+  if (document.fonts?.ready) await document.fonts.ready;
+  const { channels, annotations } = getState();
+  const svg = parseSVG(buildSVGString(channels, annotations, 20));
+  const holder = mountSVGForMeasurement(svg);
+  try {
+    fitBoxLabels(svg);
+    if (wordCompatible) convertTextToPaths(svg);
+    const bounds = fitSVGToContent(svg, EXPORT_MARGIN);
+    if (!wordCompatible) assertTextInsideSVG(svg, bounds);
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(svg);
+  } finally {
+    holder.remove();
+  }
+}
+
+function downloadSVG(svg, filename) {
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function exportSVG(button, wordCompatible) {
+  const oldText = button.textContent;
+  button.disabled = true;
+  button.textContent = '正在生成…';
+  try {
+    const svg = await createExportSVG(wordCompatible);
+    downloadSVG(svg, wordCompatible ? 'timing_diagram_word.svg' : 'timing_diagram.svg');
+  } catch (error) {
+    alert(`导出失败：${error.message}`);
+  } finally {
+    button.disabled = false;
+    button.textContent = oldText;
+  }
 }
 
 /* ==================================================================
@@ -738,6 +937,23 @@ const PRESETS = {
       { startStep: 6, endStep: 6, label: 't_AS' },
       { startStep: 8, endStep: 10, label: 't_DV' }
     ]
+  },
+  dcadc: {
+    gFontSize: 14,
+    channels: [
+      { name: 'DC_ADC_CHANNEL', code: 'zx-------------------------------------------{当前采集通道}x-----{00000}x----{下一通道}' },
+      { name: 'CNV',            code: 'LLLLLHHHLlllllllllllllllllllllllllllllllllllllllllllllll' },
+      { name: 'SCLK',           code: 'llllllllllhlhlhlhlhlhlhlhlhlhlhlhlhlHLHLHLHLHLLLLLLLLLLL' },
+      { name: 'SDO',            code: 'zzzzzzzzx--{D17}x-{D16}x-{D15}x-{D14}x-{D13}x-{D12}x-{D11}x-{D10}x-{D9}x-{D8}x-{D7}x-{D6}x-{D5}x-{D4}x-{D3}x-{D2}x-{D1}x-{D0}ZZZZZZZZZZZ' }
+    ],
+    annotations: [
+      { startStep: 1,  endStep: 5,  label: '通道等待5us', channelIndex: 0, extendAll: true },
+      { startStep: 5,  endStep: 8,  label: '转换控制',    channelIndex: 0, extendAll: true },
+      { startStep: 5,  endStep: 8,  label: '2.2us',       channelIndex: 2, extendAll: false },
+      { startStep: 8,  endStep: 45, label: '串行采集',    channelIndex: 0, extendAll: true },
+      { startStep: 11, endStep: 13, label: '12.5us',      channelIndex: 0, extendAll: true },
+      { startStep: 45, endStep: 51, label: '通道重置',    channelIndex: 0, extendAll: true }
+    ]
   }
 };
 
@@ -745,12 +961,19 @@ function loadPreset(preset) {
   document.getElementById('channelsContainer').innerHTML = '';
   document.getElementById('annotationsContainer').innerHTML = '';
 
-  preset.channels.forEach(ch => {
-    addChannelCardToDOM(generateId(), ch.name, ch.code);
+  const channelIds = preset.channels.map(ch => {
+    const id = generateId();
+    addChannelCardToDOM(id, ch.name, ch.code);
+    return id;
   });
   preset.annotations.forEach(ann => {
-    addAnnotationCardToDOM(generateId(), ann.startStep, ann.endStep, ann.label, ann.channelId || '', ann.extendAll !== false);
+    const channelId = Number.isInteger(ann.channelIndex) ? channelIds[ann.channelIndex] : ann.channelId;
+    addAnnotationCardToDOM(generateId(), ann.startStep, ann.endStep, ann.label, channelId || '', ann.extendAll !== false);
   });
+  if (preset.gFontSize) {
+    document.getElementById('globalFontSize').value = preset.gFontSize;
+    document.getElementById('fontSizeValue').textContent = preset.gFontSize;
+  }
   refreshAnnotationChannels();
   renderImmediate();
 }
@@ -775,21 +998,11 @@ function setupEvents() {
   // Presets
   document.getElementById('presetAdcBtn').addEventListener('click', () => loadPreset(PRESETS.adc));
   document.getElementById('presetMramBtn').addEventListener('click', () => loadPreset(PRESETS.mram));
+  document.getElementById('presetDcadcBtn').addEventListener('click', () => loadPreset(PRESETS.dcadc));
 
   // Export
-  document.getElementById('exportBtn').addEventListener('click', () => {
-    const { channels, annotations } = getState();
-    const svg = '<?xml version="1.0" encoding="UTF-8"?>\n' + buildSVGString(channels, annotations, 20);
-    const blob = new Blob([svg], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'timing_diagram.svg';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  });
+  document.getElementById('exportBtn').addEventListener('click', (e) => exportSVG(e.currentTarget, false));
+  document.getElementById('exportWordBtn').addEventListener('click', (e) => exportSVG(e.currentTarget, true));
 
   // Event delegation on control panel
   document.getElementById('controlPanel').addEventListener('input', (e) => {
@@ -847,6 +1060,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   renderImmediate();
 });
+
+window.WaveToolExport = { buildSVGString, createExportSVG, parseSVG, convertTextToPaths, fitSVGToContent };
 
 })();
 </script>
