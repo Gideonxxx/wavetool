@@ -72,7 +72,7 @@
     </div>
     <div class="flex gap-2">
       <button id="exportBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-2.5 rounded font-semibold transition-colors">导出标准 SVG</button>
-      <button id="exportWordBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2.5 rounded font-semibold transition-colors">导出 Word 兼容 SVG</button>
+      <button id="exportWordBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2.5 rounded font-semibold transition-colors">导出适应 Word 的 PNG</button>
     </div>
   </div>
 </div>
@@ -114,7 +114,12 @@
    Layer 0 — Utilities
    ================================================================== */
 let _idCounter = 0;
-function generateId() { return 'el_' + (++_idCounter); }
+function generateId() {
+  let id;
+  do { id = 'el_' + (++_idCounter); }
+  while (document.querySelector('[data-channel-id="' + id + '"], [data-annotation-id="' + id + '"]'));
+  return id;
+}
 
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -506,8 +511,9 @@ function buildAnnotationSVG(ann, layout, color) {
   // Find target channel row; fall back to global extents if none selected
   const row = (ann.channelId && layout.channelRows[ann.channelId])
     ? layout.channelRows[ann.channelId] : null;
-  const dTop = row ? row.top : layout.dashTop;
-  const dBot = (row && !ann.extendAll)
+  const endRow = layout.channelRows[ann.extendTo];
+  const dTop = endRow && row ? Math.min(row.top, endRow.top) : (row ? row.top : layout.dashTop);
+  const dBot = endRow && row ? Math.max(row.top + row.height, endRow.top + endRow.height) : (row && !ann.extendAll)
     ? row.top + row.height
     : layout.totalRowBottom;   // extendAll → down through all channels below target
   const arrowY = row ? row.top - 14 : layout.arrowY;
@@ -623,8 +629,8 @@ function fitSVGToContent(svg, margin) {
   const pad = Number.isFinite(margin) ? margin : EXPORT_MARGIN;
   const x = Math.floor(box.x - pad);
   const y = Math.floor(box.y - pad);
-  const width = Math.max(1, Math.ceil(box.width + pad * 2));
-  const height = Math.max(1, Math.ceil(box.height + pad * 2));
+  const width = Math.max(1, Math.ceil(box.x + box.width + pad) - x);
+  const height = Math.max(1, Math.ceil(box.y + box.height + pad) - y);
   svg.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
   svg.setAttribute('width', width);
   svg.setAttribute('height', height);
@@ -733,13 +739,34 @@ function downloadSVG(svg, filename) {
   URL.revokeObjectURL(url);
 }
 
+async function downloadWordPNG(svg) {
+  const source = parseSVG(svg);
+  const width = Number(source.getAttribute('width')), height = Number(source.getAttribute('height'));
+  const url = URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml;charset=utf-8'}));
+  try {
+    const image = new Image(); image.src = url; await image.decode();
+    const canvas = document.createElement('canvas');
+    const scale = Math.min(3, 16384 / Math.max(width, height), Math.sqrt(64000000 / (width * height)));
+    canvas.width = Math.max(1, Math.ceil(width * scale)); canvas.height = Math.max(1, Math.ceil(height * scale));
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#ffffff'; context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('图片生成失败，请缩短波形后重试');
+    const output = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = output; link.download = 'timing_diagram_word.png'; link.click();
+    setTimeout(() => URL.revokeObjectURL(output), 1000);
+  } finally { URL.revokeObjectURL(url); }
+}
+
 async function exportSVG(button, wordCompatible) {
   const oldText = button.textContent;
   button.disabled = true;
   button.textContent = '正在生成…';
   try {
-    const svg = await createExportSVG(wordCompatible);
-    downloadSVG(svg, wordCompatible ? 'timing_diagram_word.svg' : 'timing_diagram.svg');
+    const svg = await createExportSVG(false);
+    if (wordCompatible) await downloadWordPNG(svg);
+    else downloadSVG(svg, 'timing_diagram.svg');
   } catch (error) {
     alert(`导出失败：${error.message}`);
   } finally {
@@ -771,14 +798,15 @@ function getState() {
     const endEl = card.querySelector('.ann-end');
     const labelEl = card.querySelector('.ann-label');
     const chSel = card.querySelector('.ann-channel');
-    const extCb = card.querySelector('.ann-extend');
+
     annotations.push({
       id,
       startStep: startEl ? parseInt(startEl.value) || 0 : 0,
       endStep: endEl ? parseInt(endEl.value) || 0 : 0,
       label: labelEl ? labelEl.value : '',
       channelId: chSel ? chSel.value : '',
-      extendAll: extCb ? extCb.checked : true
+      extendAll: card.querySelector('.ann-extend-to')?.value === 'bottom',
+      extendTo: card.querySelector('.ann-extend-to')?.value || ''
     });
   });
 
@@ -801,10 +829,10 @@ function restoreState() {
       const fs = document.getElementById('globalFontSize');
       if (fs) { fs.value = data.gFontSize; document.getElementById('fontSizeValue').textContent = data.gFontSize; }
     }
-    data.channels.forEach(ch => addChannelCardToDOM(generateId(), ch.name, ch.code));
+    data.channels.forEach(ch => addChannelCardToDOM(ch.id || generateId(), ch.name, ch.code));
     if (data.annotations && Array.isArray(data.annotations)) {
       data.annotations.forEach(ann =>
-        addAnnotationCardToDOM(generateId(), ann.startStep, ann.endStep, ann.label, ann.channelId, ann.extendAll));
+        addAnnotationCardToDOM(generateId(), ann.startStep, ann.endStep, ann.label, ann.channelId, ann.extendAll, ann.extendTo));
     }
     refreshAnnotationChannels();
     return true;
@@ -844,7 +872,7 @@ function addChannelCardToDOM(id, name, code) {
   container.appendChild(div);
 }
 
-function addAnnotationCardToDOM(id, startStep, endStep, label, channelId, extendAll) {
+function addAnnotationCardToDOM(id, startStep, endStep, label, channelId, extendAll, extendTo) {
   if (extendAll === undefined) extendAll = false;
   if (!channelId) {
     const firstCard = document.querySelector('.channel-card');
@@ -867,9 +895,8 @@ function addAnnotationCardToDOM(id, startStep, endStep, label, channelId, extend
       `<span class="text-xs text-gray-500 shrink-0">目标通道</span>` +
       `<select class="ann-channel border border-gray-300 rounded px-1 py-1 text-xs bg-white flex-1 min-w-0">` +
       `</select>` +
-      `<label class="flex items-center gap-1 text-xs text-gray-500 cursor-pointer select-none shrink-0">` +
-        `<input type="checkbox" class="ann-extend" ${extendAll ? 'checked' : ''}> 延长虚线` +
-      `</label>` +
+      `<span class="text-xs text-gray-500 shrink-0">延长至</span>` +
+      `<select class="ann-extend-to border border-gray-300 rounded px-1 py-1 text-xs bg-white flex-1 min-w-0"></select>` +
     `</div>`;
 
   container.appendChild(div);
@@ -877,6 +904,7 @@ function addAnnotationCardToDOM(id, startStep, endStep, label, channelId, extend
   // Populate channel dropdown with current channels
   const sel = div.querySelector('.ann-channel');
   refreshSingleAnnotationDropdown(sel, channelId || '');
+  refreshExtensionDropdown(div.querySelector('.ann-extend-to'), extendTo || (extendAll ? 'bottom' : ''));
 }
 
 function refreshSingleAnnotationDropdown(sel, selectedId) {
@@ -898,10 +926,18 @@ function refreshSingleAnnotationDropdown(sel, selectedId) {
   }
 }
 
+function refreshExtensionDropdown(sel, selectedId) {
+  refreshSingleAnnotationDropdown(sel, selectedId);
+  sel.insertAdjacentHTML('afterbegin', '<option value="">本通道</option><option value="bottom">底部</option>');
+  sel.value = [...sel.options].some(option => option.value === selectedId) ? selectedId : '';
+}
+
 function refreshAnnotationChannels() {
   document.querySelectorAll('.annotation-card').forEach(card => {
     const sel = card.querySelector('.ann-channel');
     if (sel) refreshSingleAnnotationDropdown(sel, sel.value);
+    const extension = card.querySelector('.ann-extend-to');
+    if (extension) refreshExtensionDropdown(extension, extension.value);
   });
 }
 
@@ -1013,7 +1049,7 @@ function setupEvents() {
   });
 
   document.getElementById('controlPanel').addEventListener('change', (e) => {
-    if (e.target.matches('.ann-channel, .ann-extend')) {
+    if (e.target.matches('.ann-channel, .ann-extend-to')) {
       scheduleRender();
     }
   });
