@@ -66,10 +66,10 @@
   <!-- Action Bar -->
   <div class="p-4 border-t border-gray-200 bg-white space-y-2">
     <div class="flex gap-2">
-      <button id="presetAdcBtn" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-2 py-2 rounded border border-indigo-200 font-medium transition-colors">1. 3线ADC采样</button>
-      <button id="presetMramBtn" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-2 py-2 rounded border border-indigo-200 font-medium transition-colors">2. MRAM写时序</button>
-      <button id="presetDcadcBtn" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-2 py-2 rounded border border-indigo-200 font-medium transition-colors">3. DCADC时序</button>
+      <select id="templateSelect" aria-label="波形模板" class="flex-1 min-w-0 border border-indigo-200 rounded px-2 py-2 text-xs bg-white"></select>
+      <button id="loadTemplateBtn" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-2 rounded border border-indigo-200">加载模板</button>
     </div>
+    <button id="saveTemplateBtn" class="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs px-3 py-2 rounded border border-indigo-200">保存当前波形为模板</button>
     <div class="flex gap-2">
       <button id="exportBtn" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-2.5 rounded font-semibold transition-colors">导出标准 SVG</button>
       <button id="exportWordBtn" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2.5 rounded font-semibold transition-colors">导出适应 Word 的 PNG</button>
@@ -993,6 +993,66 @@ const PRESETS = {
   }
 };
 
+const TEMPLATE_STORAGE_KEY = 'wavetool_templates';
+let customTemplates = [];
+
+function refreshTemplateList(selectedValue) {
+  const select = document.getElementById('templateSelect');
+  select.innerHTML = '';
+  const placeholder = new Option('请选择波形模板', '');
+  placeholder.disabled = true;
+  select.add(placeholder);
+  const builtIn = document.createElement('optgroup');
+  builtIn.label = '内置模板';
+  [['adc', '3线ADC采样'], ['mram', 'MRAM写时序'], ['dcadc', 'DCADC时序']].forEach(([key, name]) => {
+    builtIn.appendChild(new Option(name, key));
+  });
+  select.appendChild(builtIn);
+  if (customTemplates.length) {
+    const custom = document.createElement('optgroup');
+    custom.label = '我的模板（当前浏览器）';
+    customTemplates.forEach((template, index) => custom.appendChild(new Option(template.name, 'custom:' + index)));
+    select.appendChild(custom);
+  }
+  select.value = selectedValue || '';
+}
+
+function restoreTemplates() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(TEMPLATE_STORAGE_KEY) || '[]');
+    if (Array.isArray(saved)) customTemplates = saved;
+  } catch (error) {
+    alert('本地模板读取失败，当前波形不受影响');
+  }
+  refreshTemplateList();
+}
+
+function saveCurrentTemplate() {
+  const name = prompt('模板名称（仅保存在当前浏览器）');
+  if (!name || !name.trim()) return;
+  const { channels, annotations } = getState();
+  const template = {
+    name: name.trim(),
+    gFontSize: Number(document.getElementById('globalFontSize').value),
+    channels: channels.map(({ name, code }) => ({ name, code })),
+    annotations: annotations.map(ann => ({
+      startStep: ann.startStep, endStep: ann.endStep, label: ann.label,
+      channelIndex: channels.findIndex(ch => ch.id === ann.channelId),
+      extendAll: ann.extendAll,
+      extendToIndex: channels.findIndex(ch => ch.id === ann.extendTo)
+    }))
+  };
+  const templates = [...customTemplates, template];
+  try {
+    localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(templates));
+  } catch (error) {
+    alert('模板保存失败，浏览器存储可能已满或不可用');
+    return;
+  }
+  customTemplates = templates;
+  refreshTemplateList('custom:' + (templates.length - 1));
+}
+
 function loadPreset(preset) {
   document.getElementById('channelsContainer').innerHTML = '';
   document.getElementById('annotationsContainer').innerHTML = '';
@@ -1004,7 +1064,8 @@ function loadPreset(preset) {
   });
   preset.annotations.forEach(ann => {
     const channelId = Number.isInteger(ann.channelIndex) ? channelIds[ann.channelIndex] : ann.channelId;
-    addAnnotationCardToDOM(generateId(), ann.startStep, ann.endStep, ann.label, channelId || '', ann.extendAll !== false);
+    const extendTo = Number.isInteger(ann.extendToIndex) ? channelIds[ann.extendToIndex] : '';
+    addAnnotationCardToDOM(generateId(), ann.startStep, ann.endStep, ann.label, channelId || '', ann.extendAll !== false, extendTo);
   });
   if (preset.gFontSize) {
     document.getElementById('globalFontSize').value = preset.gFontSize;
@@ -1032,9 +1093,12 @@ function setupEvents() {
   });
 
   // Presets
-  document.getElementById('presetAdcBtn').addEventListener('click', () => loadPreset(PRESETS.adc));
-  document.getElementById('presetMramBtn').addEventListener('click', () => loadPreset(PRESETS.mram));
-  document.getElementById('presetDcadcBtn').addEventListener('click', () => loadPreset(PRESETS.dcadc));
+  document.getElementById('loadTemplateBtn').addEventListener('click', () => {
+    const value = document.getElementById('templateSelect').value;
+    const preset = value.startsWith('custom:') ? customTemplates[Number(value.slice(7))] : PRESETS[value];
+    if (preset) loadPreset(preset);
+  });
+  document.getElementById('saveTemplateBtn').addEventListener('click', saveCurrentTemplate);
 
   // Export
   document.getElementById('exportBtn').addEventListener('click', (e) => exportSVG(e.currentTarget, false));
@@ -1090,6 +1154,7 @@ function setupEvents() {
    ================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
   setupEvents();
+  restoreTemplates();
   if (!restoreState()) {
     addChannelCardToDOM(generateId(), 'SIG', 'LLHHLL');
     addAnnotationCardToDOM(generateId(), 2, 4, 't_PW', '', false);
